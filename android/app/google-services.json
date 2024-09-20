@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "73343995888",
+    "project_id": "clinic-appointment-syste-16907",
+    "storage_bucket": "clinic-appointment-syste-16907.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:73343995888:android:ef8f094f194700bba41735",
+        "android_client_info": {
+          "package_name": "com.example.clinic_admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtVYBHqZ9w0QLe_mAyTHVluhyMEjr0BC4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:73343995888:android:fe0d53f9ed7999faa41735",
+        "android_client_info": {
+          "package_name": "com.example.clinic_users"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtVYBHqZ9w0QLe_mAyTHVluhyMEjr0BC4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
