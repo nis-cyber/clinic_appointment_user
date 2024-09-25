@@ -1,96 +1,99 @@
-import 'package:clinic_users/features/appointment/data/appointment_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class AcceptedAppointmentTab extends ConsumerWidget {
+class MyAcceptedAppointmentsPage extends StatelessWidget {
+  const MyAcceptedAppointmentsPage({
+    super.key,
+  });
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final appointmentsAsyncValue = ref.watch(acceptedAppointmentsProvider);
-
+  Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser!.uid;
     return Scaffold(
-      body: appointmentsAsyncValue.when(
-        data: (appointments) {
-          if (appointments.isEmpty) {
-            return const Center(child: Text('No accepted appointments.'));
-          }
-          return ListView.builder(
-            itemCount: appointments.length,
-            itemBuilder: (context, index) {
-              var appointment = appointments[index];
-              return _buildAppointmentCard(context, appointment);
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(
-          child: Text('Error: $error'),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppointmentCard(
-      BuildContext context, Map<String, dynamic> data) {
-    DateTime createdAt = (data['createdAt'] as Timestamp).toDate();
-    DateTime acceptedAt = (data['acceptedAt'] as Timestamp).toDate();
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        title: Text('Dr. ${data['doctorName']}'),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Date: ${data['day']}'),
-            Text('Time: ${data['slot']}'),
-            Text('Status: ${data['status']}'),
-            Text(
-                'Booked on: ${DateFormat('MMM d, yyyy HH:mm').format(createdAt)}'),
-            Text(
-                'Accepted on: ${DateFormat('MMM d, yyyy HH:mm').format(acceptedAt)}'),
-          ],
-        ),
-        trailing: _buildStatusIcon(data['status']),
-        onTap: () => _showAppointmentDetails(context, data),
-      ),
-    );
-  }
-
-  Widget _buildStatusIcon(String status) {
-    return Icon(Icons.check_circle, color: Colors.green);
-  }
-
-  void _showAppointmentDetails(
-      BuildContext context, Map<String, dynamic> appointmentData) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Appointment Details'),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Doctor: Dr. ${appointmentData['doctorName']}'),
-              Text('Date: ${appointmentData['day']}'),
-              Text('Time: ${appointmentData['slot']}'),
-              Text('Status: ${appointmentData['status']}'),
-              Text(
-                  'Booked on: ${DateFormat('MMM d, yyyy HH:mm').format((appointmentData['createdAt'] as Timestamp).toDate())}'),
-              Text(
-                  'Accepted on: ${DateFormat('MMM d, yyyy HH:mm').format((appointmentData['acceptedAt'] as Timestamp).toDate())}'),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color.fromARGB(255, 173, 205, 204)!,
+              const Color.fromARGB(255, 180, 152, 225)!
             ],
           ),
-          actions: [
-            TextButton(
-              child: const Text('Close'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        );
-      },
+        ),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('accepted_appointments')
+              .where('user_id', isEqualTo: currentUser) // Filter by user ID
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.data!.docs.isEmpty) {
+              return const Center(child: Text('No accepted appointments.'));
+            }
+
+            return ListView.builder(
+              itemCount: snapshot.data!.docs.length,
+              itemBuilder: (context, index) {
+                var appointmentData =
+                    snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                return Card(
+                  color: Colors.grey[300],
+                  margin: const EdgeInsets.symmetric(
+                      vertical: 8.0, horizontal: 16.0),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                            'Doctor Name', appointmentData['doctor_name']),
+                        _buildInfoRow(
+                            'Specialty', appointmentData['doctor_specialty']),
+                        _buildInfoRow(
+                            'Date',
+                            DateFormat('yyyy-MM-dd').format(
+                                DateTime.parse(appointmentData['date']))),
+                        _buildInfoRow(
+                            'Time Slot', appointmentData['time_slot']),
+                        _buildInfoRow('Status', appointmentData['status']),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(value)),
+        ],
+      ),
     );
   }
 }

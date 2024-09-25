@@ -34,7 +34,9 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage>
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 173, 205, 204)!,
         title: Text('My Appointments'),
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -46,8 +48,8 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          PendingAppointmentTab(),
-          AcceptedAppointmentTab(),
+          AppointmentPendingPage(),
+          MyAcceptedAppointmentsPage(),
         ],
       ),
     );
