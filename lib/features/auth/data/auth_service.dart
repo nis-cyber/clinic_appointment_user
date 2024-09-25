@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService {
@@ -27,10 +28,13 @@ class AuthService {
         email: email.trim(),
         password: password.trim(),
       );
+      final token = await FirebaseMessaging.instance.getToken();
+
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'email': email.trim(),
         'fullname': fullname.trim(),
         'address': address.trim(),
+        'token': token,
       });
     } catch (e) {
       if (kDebugMode) {

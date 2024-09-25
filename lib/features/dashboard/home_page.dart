@@ -22,6 +22,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Color.fromARGB(255, 173, 205, 204),
         automaticallyImplyLeading: false,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -40,55 +41,60 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
-              onPressed: () {
-                // Navigator.of(context).push(
-                //     MaterialPageRoute(builder: (_) => NotificationPage()));
-              },
+              onPressed: () {},
               icon: const Icon(Ionicons.notifications_outline)),
           IconButton(
-              onPressed: () {
-                // Navigator.of(context).push(
-                //     MaterialPageRoute(builder: (_) => const SearchScreen()));
-              },
-              icon: const Icon(Ionicons.search_outline))
+              onPressed: () {}, icon: const Icon(Ionicons.search_outline))
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(14),
-        children: [
-          //upcoming card
-          const UpcomingCard(),
-
-          const SizedBox(height: 20),
-          Text(
-            "Health Needs",
-            style: Theme.of(context).textTheme.titleLarge,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color.fromARGB(255, 173, 205, 204)!,
+              const Color.fromARGB(255, 180, 152, 225)!
+            ],
           ),
-          const SizedBox(height: 15),
-          //healths need
-          const HealthNeeds(),
-          const SizedBox(height: 30),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(14),
+          children: [
+            //upcoming card
+            const UpcomingCard(),
 
-          //Nearby doctors
-          ListTile(
-            leading: Text(
-              'Nearby Doctors',
+            const SizedBox(height: 20),
+            Text(
+              "Health Needs",
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            trailing: InkWell(
-              onTap: () {
-                Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => DoctorPage()));
-              },
-              child: Icon(
-                Icons.arrow_forward_ios,
-                size: 18,
+            const SizedBox(height: 15),
+            //healths need
+            const HealthNeeds(),
+            const SizedBox(height: 30),
+
+            //Nearby doctors
+            ListTile(
+              leading: Text(
+                'Nearby Doctors',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              trailing: InkWell(
+                onTap: () {
+                  Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => DoctorPage()));
+                },
+                child: Icon(
+                  Icons.arrow_forward_ios,
+                  size: 18,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 15),
-          // const NearbyDoctors(),
-        ],
+            const SizedBox(height: 15),
+            // const NearbyDoctors(),
+          ],
+        ),
       ),
     );
   }
