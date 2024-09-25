@@ -13,28 +13,34 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: selectedIndex,
-      onTap: onTap,
-      type: BottomNavigationBarType.fixed,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(CupertinoIcons.home),
-          label: "Home",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_month),
-          label: "Appointments",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(CupertinoIcons.book),
-          label: "Discover",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(CupertinoIcons.person),
-          label: "Profile",
-        ),
-      ],
+    return Container(
+      child: BottomNavigationBar(
+        selectedIconTheme: IconThemeData(color: Colors.blue),
+        elevation: 5,
+        backgroundColor: Color.fromARGB(255, 180, 152, 225),
+        fixedColor: Colors.blue,
+        currentIndex: selectedIndex,
+        onTap: onTap,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: "Appointments",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.person),
+            label: "Profile",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.doc_chart),
+            label: "My Reports",
+          ),
+        ],
+      ),
     );
   }
 }

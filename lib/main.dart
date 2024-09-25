@@ -3,9 +3,9 @@ import 'package:clinic_users/common/widgets/bottom_nav_bar.dart';
 import 'package:clinic_users/features/appointment/pages/tabs/appointment_page.dart';
 import 'package:clinic_users/features/auth/pages/status_page.dart';
 import 'package:clinic_users/features/dashboard/home_page.dart';
-import 'package:clinic_users/features/other/appointment_page.dart';
+import 'package:clinic_users/features/medical_record/pages/medical_record_page.dart';
+
 import 'package:clinic_users/features/profile/profile_page.dart';
-import 'package:clinic_users/features/other/search_doctor.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,11 +21,11 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -46,8 +46,8 @@ class _MainPageState extends State<MainPage> {
   final _pages = [
     const HomePage(),
     AppointmentPage(),
-    const SearchPage(),
     const ProfilePage(),
+    MedicalReportPage(),
   ];
 
   int _selectedIndex = 0;
@@ -65,7 +65,7 @@ class _MainPageState extends State<MainPage> {
         selectedIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
-      body: _pages[_selectedIndex],
+      body: _pages[_selectedIndex] as Widget?,
     );
   }
 }
