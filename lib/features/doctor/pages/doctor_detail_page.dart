@@ -1,147 +1,122 @@
-import 'package:clinic_users/features/doctor/model/doctor_model.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
 
-class DoctorDetailPage extends StatefulWidget {
-  final DoctorModel doctor;
+class DoctorDetailPage extends StatelessWidget {
+  final String doctorId;
 
-  DoctorDetailPage({
-    Key? key,
-    required this.doctor,
-  }) : super(key: key);
-
-  @override
-  State<DoctorDetailPage> createState() => _DoctorDetailPageState();
-}
-
-class _DoctorDetailPageState extends State<DoctorDetailPage> {
-  late DoctorModel _doctor;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  @override
-  void initState() {
-    super.initState();
-    _doctor = widget.doctor;
-  }
+  DoctorDetailPage({required this.doctorId});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: <Widget>[
-          SliverAppBar(
-            expandedHeight: 200.0,
-            floating: false,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(widget.doctor.name),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.blue.shade800, Colors.blue.shade500],
-                  ),
-                ),
-                child: const Center(
-                  child: Icon(Icons.person, size: 80, color: Colors.white),
-                ),
-              ),
-            ),
+      appBar: AppBar(
+        title: const Text('Doctor Details'),
+        backgroundColor: Color.fromARGB(255, 173, 205, 204),
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.fromARGB(255, 173, 205, 204),
+              Color.fromARGB(255, 180, 152, 225),
+            ],
           ),
-          SliverToBoxAdapter(
-            child: Padding(
+        ),
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('doctors')
+              .doc(doctorId)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!snapshot.hasData || !snapshot.data!.exists) {
+              return const Center(child: Text('Doctor not found.'));
+            }
+
+            var doctorData = snapshot.data!.data() as Map<String, dynamic>;
+
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildInfoCard(),
-                  const SizedBox(height: 20),
-                  Text('Available Slots',
-                      style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 10),
-                  _buildAvailableSlotsCard(context),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 200,
-                        child: ElevatedButton(
-                          style: ButtonStyle(
-                            padding: WidgetStateProperty.all(
-                                const EdgeInsets.symmetric(
-                                    vertical: 8, horizontal: 16)),
-                            backgroundColor:
-                                WidgetStateProperty.all(Colors.blue.shade500),
-                            alignment: Alignment.center,
-                          ),
-                          onPressed: () => _showBookingDialog(context),
-                          child: const Text(
-                            'Book Appointment',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  _buildInfoCard('Doctor Information', [
+                    _buildInfoRow('Name', doctorData['name']),
+                    _buildInfoRow('Specialty', doctorData['specialty']),
+                  ]),
+                  const SizedBox(height: 16),
+                  _buildAvailabilitySection(
+                      doctorData['availability'], doctorData, context),
+                  SizedBox(
+                    height: 495,
                   )
                 ],
               ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildInfoCard() {
+  Widget _buildInfoCard(String title, List<Widget> children) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 6,
+      color: Colors.white.withOpacity(0.9), // Card background opacity
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      shadowColor: Colors.grey.withOpacity(0.5),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow(
-                Icons.medical_services, 'Specialty', widget.doctor.specialty),
-            const Divider(),
-            _buildInfoRow(
-                Icons.schedule,
-                'Total Available Slots',
-                widget.doctor.availableSlots.values
-                    .expand((slots) => slots)
-                    .length
-                    .toString()),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color.fromARGB(255, 52, 81, 133),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...children,
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue.shade700),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style:
-                        TextStyle(fontSize: 14, color: Colors.grey.shade600)),
-                const SizedBox(height: 4),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
+          Text(
+            '$label:',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
             ),
           ),
         ],
@@ -149,194 +124,321 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     );
   }
 
-  Widget _buildAvailableSlotsCard(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+  Widget _buildAvailabilitySection(Map<String, dynamic> availability,
+      Map<String, dynamic> doctorData, BuildContext context) {
+    List<Widget> availabilityWidgets = [];
+
+    availability.forEach((date, slots) {
+      availabilityWidgets.add(
+        Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 6,
+          shadowColor: Colors.grey.withOpacity(0.4),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  DateFormat('EEEE, MMMM d, y').format(DateTime.parse(date)),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 70, 130, 180),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: (slots as List<dynamic>).map((slot) {
+                    return ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(
+                            255, 98, 165, 220), // Button color
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(slot),
+                      onPressed: () {
+                        _bookAppointment(context, doctorId, doctorData['name'],
+                            doctorData['specialty'], date, slot);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Availability',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color.fromARGB(255, 52, 81, 133),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...availabilityWidgets,
+      ],
+    );
+  }
+
+  void _bookAppointment(
+    BuildContext context,
+    String doctorId,
+    String doctorName,
+    String doctorSpecialty,
+    String date,
+    String timeSlot,
+  ) async {
+    TextEditingController _userNameController = TextEditingController();
+    TextEditingController _userEmailController = TextEditingController();
+    String? fileName;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return AppointmentBookingSheet(
+          doctorId: doctorId,
+          doctorName: doctorName,
+          doctorSpecialty: doctorSpecialty,
+          date: date,
+          timeSlot: timeSlot,
+        );
+      },
+    );
+  }
+}
+
+class AppointmentBookingSheet extends StatefulWidget {
+  final String doctorId;
+  final String doctorName;
+  final String doctorSpecialty;
+  final String date;
+  final String timeSlot;
+
+  const AppointmentBookingSheet({
+    Key? key,
+    required this.doctorId,
+    required this.doctorName,
+    required this.doctorSpecialty,
+    required this.date,
+    required this.timeSlot,
+  }) : super(key: key);
+
+  @override
+  _AppointmentBookingSheetState createState() =>
+      _AppointmentBookingSheetState();
+}
+
+class _AppointmentBookingSheetState extends State<AppointmentBookingSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _userNameController = TextEditingController();
+  final _userPhoneController = TextEditingController();
+  String? _fileName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Form(
+        key: _formKey,
         child: Column(
-          children: widget.doctor.availableSlots.entries.map((entry) {
-            return _buildDaySlots(context, entry.key, entry.value);
-          }).toList(),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Book Appointment',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[800],
+                  ),
+            ),
+            SizedBox(height: 24),
+            _buildTextField(
+              controller: _userNameController,
+              label: 'Patient Name',
+              icon: Icons.person,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter patient name';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 16),
+            _buildTextField(
+              controller: _userPhoneController,
+              label: 'Patient Phone Number',
+              icon: Icons.phone,
+              keyboardType: TextInputType.phone,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter phone number';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 24),
+            _buildFileUploadButton(),
+            SizedBox(height: 32),
+            _buildSubmitButton(),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildDaySlots(BuildContext context, String day, List<String> slots) {
-    return ExpansionTile(
-      title: Text(day, style: const TextStyle(fontWeight: FontWeight.bold)),
-      children: [
-        Wrap(
-          spacing: 8.0,
-          runSpacing: 8.0,
-          children: slots
-              .map((slot) => Chip(
-                    label: Text(slot),
-                    backgroundColor: Colors.blue.shade100,
-                    labelStyle: TextStyle(color: Colors.blue.shade800),
-                  ))
-              .toList(),
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.blue[800]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue[200]!),
         ),
-      ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
+        ),
+      ),
+      keyboardType: keyboardType,
+      validator: validator,
     );
   }
 
-  void _showBookingDialog(BuildContext context) {
-    String? selectedDay;
-    String? selectedSlot;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Book Appointment'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButton<String>(
-                    isExpanded: true,
-                    hint: Text('Select Day'),
-                    value: selectedDay,
-                    items: _doctor.availableSlots.keys.map((String day) {
-                      return DropdownMenuItem<String>(
-                        value: day,
-                        child: Text(day),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedDay = newValue;
-                        selectedSlot = null;
-                      });
-                    },
-                  ),
-                  SizedBox(height: 16),
-                  if (selectedDay != null)
-                    DropdownButton<String>(
-                      isExpanded: true,
-                      hint: Text('Select Time Slot'),
-                      value: selectedSlot,
-                      items: _doctor.availableSlots[selectedDay]!
-                          .map((String slot) {
-                        return DropdownMenuItem<String>(
-                          value: slot,
-                          child: Text(slot),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          selectedSlot = newValue;
-                        });
-                      },
-                    ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  child: Text('Cancel'),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                ElevatedButton(
-                  child: Text('Book'),
-                  onPressed: (selectedDay != null && selectedSlot != null)
-                      ? () =>
-                          _bookAppointment(context, selectedDay!, selectedSlot!)
-                      : null,
-                ),
-              ],
-            );
-          },
-        );
-      },
+  Widget _buildFileUploadButton() {
+    return ElevatedButton.icon(
+      onPressed: _pickFile,
+      icon: Icon(
+        Icons.upload_file,
+        color: Colors.white,
+      ),
+      label: Text(
+        _fileName ?? 'Upload Medical Document (Optional)',
+        style: TextStyle(
+          fontSize: 16,
+          color: _fileName == null
+              ? const Color.fromARGB(255, 239, 239, 239)
+              : const Color.fromARGB(255, 235, 235, 235),
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue[800],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      ),
     );
   }
 
-  Future<void> _bookAppointment(
-      BuildContext context, String day, String slot) async {
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return Center(child: CircularProgressIndicator());
-        },
-      );
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _submitAppointment,
+        child: Text(
+          'Submit Appointment Request',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color.fromARGB(255, 80, 133, 82),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: EdgeInsets.symmetric(vertical: 16),
+        ),
+      ),
+    );
+  }
 
-      // Get current user
-      User? currentUser = _auth.currentUser;
-      if (currentUser == null) {
-        throw Exception('No user logged in');
-      }
-
-      // Fetch user data from Firestore
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(currentUser.uid).get();
-
-      if (!userDoc.exists) {
-        throw Exception('User data not found');
-      }
-
-      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      String userFullName = userData['fullName'] ?? 'Unknown User';
-
-      // Start a batch write
-      WriteBatch batch = _firestore.batch();
-
-      // Create a new appointment document
-      DocumentReference appointmentRef =
-          _firestore.collection('appointments_pending').doc();
-      batch.set(appointmentRef, {
-        'doctorId': _doctor.id,
-        'doctorName': _doctor.name,
-        'day': day,
-        'slot': slot,
-        'patientId': currentUser.uid,
-        'patientName': userFullName,
-        'status': 'pending',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // Update doctor's available slots
-      DocumentReference doctorRef =
-          _firestore.collection('doctors').doc(_doctor.id);
-      batch.update(doctorRef, {
-        'availableSlots.$day': FieldValue.arrayRemove([slot])
-      });
-
-      // Commit the batch
-      await batch.commit();
-
-      // Update local state
+  void _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+    if (result != null) {
       setState(() {
-        _doctor.availableSlots[day]!.remove(slot);
+        _fileName = result.files.single.name;
+      });
+    }
+  }
+
+  void _submitAppointment() async {
+    if (_formKey.currentState!.validate()) {
+      // Existing appointment submission logic
+      String? userId = FirebaseAuth.instance.currentUser?.uid;
+
+      await FirebaseFirestore.instance.collection('appointment_pending').add({
+        'doctor_id': widget.doctorId,
+        'doctor_name': widget.doctorName,
+        'doctor_specialty': widget.doctorSpecialty,
+        'user_name': _userNameController.text,
+        'user_phone': _userPhoneController.text,
+        'date': widget.date,
+        'time_slot': widget.timeSlot,
+        'document': _fileName ?? 'No document uploaded',
+        'user_id': userId ?? 'Unknown',
+        'status': 'pending',
       });
 
-      // Close loading indicator
-      Navigator.of(context).pop();
+      // Update doctor's availability
+      DocumentSnapshot doctorSnapshot = await FirebaseFirestore.instance
+          .collection('doctors')
+          .doc(widget.doctorId)
+          .get();
 
-      // Close booking dialog
-      Navigator.of(context).pop();
+      if (doctorSnapshot.exists) {
+        var doctorData = doctorSnapshot.data() as Map<String, dynamic>;
+        if (doctorData['availability'] != null &&
+            doctorData['availability'][widget.date] != null) {
+          List<dynamic> slots = doctorData['availability'][widget.date];
+          slots.remove(widget.timeSlot);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Appointment booked for $day at $slot')),
-      );
-    } catch (e) {
-      print('Error booking appointment: $e');
+          if (slots.isEmpty) {
+            doctorData['availability'].remove(widget.date);
+          } else {
+            doctorData['availability'][widget.date] = slots;
+          }
 
-      // Close loading indicator
-      Navigator.of(context).pop();
+          await FirebaseFirestore.instance
+              .collection('doctors')
+              .doc(widget.doctorId)
+              .update({'availability': doctorData['availability']});
+        }
+      }
 
-      // Close booking dialog
-      Navigator.of(context).pop();
+      Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Failed to book appointment. Please try again.')),
+          content: Text('Appointment booked successfully!'),
+          backgroundColor: Colors.green,
+        ),
       );
     }
   }
