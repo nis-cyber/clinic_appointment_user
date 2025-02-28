@@ -1,4 +1,4 @@
-import 'package:clinic_users/features/medical_record/pages/report_detail_page.dart';
+import 'package:clinic_users/features/medical_record/report_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth

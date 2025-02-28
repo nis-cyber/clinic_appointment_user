@@ -1,4 +1,3 @@
-import 'package:clinic_users/features/appointment/data/appointment_provider.dart';
 import 'package:clinic_users/features/appointment/pages/tabs/accepted_appointment_page.dart';
 import 'package:clinic_users/features/appointment/pages/tabs/pending_appointment_page.dart';
 import 'package:flutter/material.dart';
@@ -27,11 +26,6 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<int>(appointmentNotifierProvider, (previous, next) {
-      // When an appointment is accepted, switch to the Accepted tab
-      _tabController.animateTo(1);
-    });
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 173, 205, 204)!,
@@ -40,7 +34,9 @@ class _AppointmentPageState extends ConsumerState<AppointmentPage>
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'Pending'),
+            Tab(
+              text: 'Pending',
+            ),
             Tab(text: 'Accepted'),
           ],
         ),

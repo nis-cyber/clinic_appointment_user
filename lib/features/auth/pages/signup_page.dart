@@ -25,7 +25,7 @@ class _SignupPageState extends State<SignupPage> {
       context,
       MaterialPageRoute(
         builder: (constext) {
-          return StatusPage();
+          return const StatusPage();
         },
       ),
     );
@@ -237,11 +237,11 @@ class _SignupPageState extends State<SignupPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Already registered?'),
+                  const Text('Already registered?'),
                   TextButton(
                       onPressed: () {
                         Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => LoginPage()));
+                            builder: (context) => const LoginPage()));
                       },
                       child: const Text(
                         "Login",

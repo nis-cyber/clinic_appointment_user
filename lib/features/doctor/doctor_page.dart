@@ -1,4 +1,4 @@
-import 'package:clinic_users/features/doctor/pages/doctor_detail_page.dart';
+import 'package:clinic_users/features/doctor/doctor_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 

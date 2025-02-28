@@ -39,11 +39,11 @@ class UpcomingCard extends StatelessWidget {
                       color: Colors.white),
                 ),
               ),
-              Text(
+              const Text(
                 'General Physician',
                 style: TextStyle(color: Colors.white70),
               ),
-              SizedBox(
+              const SizedBox(
                 height: 18,
               ),
               Container(

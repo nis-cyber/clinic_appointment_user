@@ -1,20 +1,42 @@
 import 'package:clinic_users/api/firebase_options.dart';
-import 'package:clinic_users/common/widgets/bottom_nav_bar.dart';
+import 'package:clinic_users/widgets/bottom_nav_bar.dart';
 import 'package:clinic_users/features/appointment/pages/tabs/appointment_page.dart';
 import 'package:clinic_users/features/auth/pages/status_page.dart';
 import 'package:clinic_users/features/dashboard/home_page.dart';
-import 'package:clinic_users/features/medical_record/pages/medical_record_page.dart';
+import 'package:clinic_users/features/medical_record/medical_record_page.dart';
 
 import 'package:clinic_users/features/profile/profile_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 void main() async {
+  print('Starting the app');
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.android,
   );
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  // Obtain the FCM token
+  String? token = await messaging.getToken();
+  print("FCM Token: $token");
+
+  // Handle foreground messages
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print('Received a message while in the foreground!');
+    if (message.notification != null) {
+      print('Message Title: ${message.notification!.title}');
+      print('Message Body: ${message.notification!.body}');
+    }
+  });
+
   runApp(const ProviderScope(child: MyApp()));
 }
 

@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:mailer/mailer.dart';
+import 'package:mailer/smtp_server/gmail.dart';
 
 class DoctorDetailPage extends StatelessWidget {
   final String doctorId;
@@ -76,7 +78,7 @@ class DoctorDetailPage extends StatelessWidget {
   Widget _buildInfoCard(String title, List<Widget> children) {
     return Card(
       elevation: 6,
-      color: Colors.white.withOpacity(0.9), // Card background opacity
+      color: Colors.white.withOpacity(0.9),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       shadowColor: Colors.grey.withOpacity(0.5),
       child: Padding(
@@ -158,8 +160,8 @@ class DoctorDetailPage extends StatelessWidget {
                   children: (slots as List<dynamic>).map((slot) {
                     return ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(
-                            255, 98, 165, 220), // Button color
+                        backgroundColor:
+                            const Color.fromARGB(255, 98, 165, 220),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -195,8 +197,6 @@ class DoctorDetailPage extends StatelessWidget {
       ],
     );
   }
-
-  // ratinga nd feedback
 
   Widget _buildRatingAndFeedbackSection(String doctorId) {
     return StreamBuilder<QuerySnapshot>(
@@ -323,10 +323,6 @@ class DoctorDetailPage extends StatelessWidget {
     String date,
     String timeSlot,
   ) async {
-    TextEditingController _userNameController = TextEditingController();
-    TextEditingController _userEmailController = TextEditingController();
-    String? fileName;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -369,6 +365,8 @@ class _AppointmentBookingSheetState extends State<AppointmentBookingSheet> {
   final _formKey = GlobalKey<FormState>();
   final _userNameController = TextEditingController();
   final _userPhoneController = TextEditingController();
+  final _userEmailController = TextEditingController();
+
   String? _fileName;
 
   @override
@@ -400,6 +398,19 @@ class _AppointmentBookingSheetState extends State<AppointmentBookingSheet> {
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter patient name';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 16),
+            _buildTextField(
+              controller: _userEmailController,
+              label: 'Email Address',
+              icon: Icons.email,
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter email address';
                 }
                 return null;
               },
@@ -511,56 +522,117 @@ class _AppointmentBookingSheetState extends State<AppointmentBookingSheet> {
 
   void _submitAppointment() async {
     if (_formKey.currentState!.validate()) {
-      // Existing appointment submission logic
-      String? userId = FirebaseAuth.instance.currentUser?.uid;
+      try {
+        // Save appointment to Firestore
+        String? userId = FirebaseAuth.instance.currentUser?.uid;
 
-      await FirebaseFirestore.instance.collection('appointment_pending').add({
-        'doctor_id': widget.doctorId,
-        'doctor_name': widget.doctorName,
-        'doctor_specialty': widget.doctorSpecialty,
-        'user_name': _userNameController.text,
-        'user_phone': _userPhoneController.text,
-        'date': widget.date,
-        'time_slot': widget.timeSlot,
-        'document': _fileName ?? 'No document uploaded',
-        'user_id': userId ?? 'Unknown',
-        'status': 'pending',
-      });
+        await FirebaseFirestore.instance.collection('appointment_pending').add({
+          'doctor_id': widget.doctorId,
+          'doctor_name': widget.doctorName,
+          'doctor_specialty': widget.doctorSpecialty,
+          'user_name': _userNameController.text,
+          'user_phone': _userPhoneController.text,
+          'user_email': _userEmailController.text,
+          'date': widget.date,
+          'time_slot': widget.timeSlot,
+          'document': _fileName ?? 'No document uploaded',
+          'user_id': userId ?? 'Unknown',
+          'status': 'pending',
+        });
 
-      // Update doctor's availability
-      DocumentSnapshot doctorSnapshot = await FirebaseFirestore.instance
-          .collection('doctors')
-          .doc(widget.doctorId)
-          .get();
+        // Update doctor's availability
+        DocumentSnapshot doctorSnapshot = await FirebaseFirestore.instance
+            .collection('doctors')
+            .doc(widget.doctorId)
+            .get();
 
-      if (doctorSnapshot.exists) {
-        var doctorData = doctorSnapshot.data() as Map<String, dynamic>;
-        if (doctorData['availability'] != null &&
-            doctorData['availability'][widget.date] != null) {
-          List<dynamic> slots = doctorData['availability'][widget.date];
-          slots.remove(widget.timeSlot);
+        if (doctorSnapshot.exists) {
+          var doctorData = doctorSnapshot.data() as Map<String, dynamic>;
+          if (doctorData['availability'] != null &&
+              doctorData['availability'][widget.date] != null) {
+            List<dynamic> slots = doctorData['availability'][widget.date];
+            slots.remove(widget.timeSlot);
 
-          if (slots.isEmpty) {
-            doctorData['availability'].remove(widget.date);
-          } else {
-            doctorData['availability'][widget.date] = slots;
+            if (slots.isEmpty) {
+              doctorData['availability'].remove(widget.date);
+            } else {
+              doctorData['availability'][widget.date] = slots;
+            }
+
+            await FirebaseFirestore.instance
+                .collection('doctors')
+                .doc(widget.doctorId)
+                .update({'availability': doctorData['availability']});
           }
-
-          await FirebaseFirestore.instance
-              .collection('doctors')
-              .doc(widget.doctorId)
-              .update({'availability': doctorData['availability']});
         }
+
+        // Send confirmation email
+        final emailSent = await _sendConfirmationEmail(
+          userName: _userNameController.text,
+          userEmail: _userEmailController.text,
+          date: widget.date,
+          timeSlot: widget.timeSlot,
+          doctorName: widget.doctorName,
+        );
+
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(emailSent
+                ? 'Appointment booked successfully! Confirmation email sent.'
+                : 'Appointment booked! Email failed to send.'),
+            backgroundColor: emailSent ? Colors.green : Colors.orange,
+          ),
+        );
+      } catch (e) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error booking appointment: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
+    }
+  }
 
-      Navigator.pop(context);
+  Future<bool> _sendConfirmationEmail({
+    required String userName,
+    required String userEmail,
+    required String date,
+    required String timeSlot,
+    required String doctorName,
+  }) async {
+    try {
+      final username = 'nishant.kharel135@gmail.com';
+      final password = 'mfar rwsb emqq nrur';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Appointment booked successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      final smtpServer = gmail(username, password);
+      final formattedDate =
+          DateFormat('EEEE, MMMM d, y').format(DateTime.parse(date));
+
+      final message = Message()
+        ..from = Address(username, 'Clinic Appointment System')
+        ..recipients.add(userEmail)
+        ..subject = 'Appointment Confirmation - $doctorName'
+        ..html = '''
+          <h3>Appointment Confirmation</h3>
+          <p>Dear $userName,</p>
+          <p>Your appointment has been successfully booked with:</p>
+          <p><strong>Doctor:</strong> $doctorName</p>
+          <p><strong>Date:</strong> $formattedDate</p>
+          <p><strong>Time:</strong> $timeSlot</p>
+          <br/>
+          <p>Please arrive 15 minutes prior to your appointment time.</p>
+          <p>Thank you for choosing our clinic!</p>
+        ''';
+
+      final sendReport = await send(message, smtpServer);
+      return true;
+    } catch (e) {
+      print('Error sending email: $e');
+      return false;
     }
   }
 }

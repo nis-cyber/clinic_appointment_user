@@ -1,6 +1,6 @@
-import 'package:clinic_users/common/widgets/health_needs.dart';
-import 'package:clinic_users/common/widgets/upcoming_card.dart';
-import 'package:clinic_users/features/doctor/pages/doctor_page.dart';
+import 'package:clinic_users/widgets/health_needs.dart';
+import 'package:clinic_users/widgets/upcoming_card.dart';
+import 'package:clinic_users/features/doctor/doctor_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ionicons/ionicons.dart';
@@ -22,7 +22,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color.fromARGB(255, 173, 205, 204),
+        backgroundColor: const Color.fromARGB(255, 173, 205, 204),
         automaticallyImplyLeading: false,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -84,17 +84,18 @@ class _HomePageState extends State<HomePage> {
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: const Color.fromARGB(255, 120, 130, 187),
-                padding: EdgeInsets.symmetric(vertical: 15),
+                padding: const EdgeInsets.symmetric(vertical: 15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
                 elevation: 5,
               ),
-              child: Text(
+              child: const Text(
                 'View All Doctors',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
+            ElevatedButton(onPressed: () {}, child: const Text("Go to Queue"))
           ],
         ),
       ),
