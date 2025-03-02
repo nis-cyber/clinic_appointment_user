@@ -199,8 +199,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     pinned: true,
                     flexibleSpace: Container(
                       child: FlexibleSpaceBar(
-                        title:
-                            Text(fullname).animate().fadeIn(duration: 500.ms),
                         background: profileImageUrl.isNotEmpty
                             ? Container(
                                 child: CachedNetworkImage(
@@ -241,10 +239,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ],
                   ),
+                  // Updated UI Section
                   SliverToBoxAdapter(
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
+                        Text(fullname,
+                                style: TextStyle(
+                                    fontSize: 30, fontWeight: FontWeight.bold))
+                            .animate()
+                            .fadeIn(duration: 500.ms),
                         ElevatedButton.icon(
                           onPressed: isLoading ? null : _pickAndUploadImage,
                           icon: const Icon(Icons.camera_alt),
@@ -274,34 +278,38 @@ class _ProfilePageState extends State<ProfilePage> {
                                   _buildInfoField(
                                     icon: Icons.email,
                                     label: 'Email',
-                                    value: email,
+                                    controller: TextEditingController(
+                                        text: email), // Use controller
                                     isEditable: false,
                                   ),
                                   const SizedBox(height: 15),
                                   _buildInfoField(
                                     icon: Icons.person,
                                     label: 'Full Name',
-                                    controller: fullnameController,
+                                    controller:
+                                        fullnameController, // Use controller
                                     isEditable: isEditing,
                                   ),
                                   const SizedBox(height: 15),
                                   _buildInfoField(
                                     icon: Icons.home,
                                     label: 'Address',
-                                    controller: addressController,
+                                    controller:
+                                        addressController, // Use controller
                                     isEditable: isEditing,
                                   ),
                                   const SizedBox(height: 15),
                                   _buildInfoField(
                                     icon: Icons.contact_phone,
                                     label: 'Phone Number',
-                                    controller: numberController,
+                                    controller:
+                                        numberController, // Use controller
                                     isEditable: isEditing,
                                   ),
                                 ],
                               ),
-                            ),
-                          ).animate().fadeIn(duration: 500.ms).slide(),
+                            ).animate().fadeIn(duration: 500.ms).slide(),
+                          ),
                         ),
                         const SizedBox(height: 20),
                         ElevatedButton.icon(
@@ -337,13 +345,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildInfoField({
     required IconData icon,
     required String label,
-    String? value,
     TextEditingController? controller,
     bool isEditable = true,
   }) {
     return TextFormField(
-      initialValue: value,
-      controller: controller,
+      controller: controller, // Use only the controller
       readOnly: !isEditable,
       decoration: InputDecoration(
         labelText: label,

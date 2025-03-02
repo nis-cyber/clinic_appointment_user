@@ -1,6 +1,7 @@
+import 'package:clinic_users/features/queue/queue_page.dart';
 import 'package:clinic_users/widgets/health_needs.dart';
 import 'package:clinic_users/widgets/upcoming_card.dart';
-import 'package:clinic_users/features/doctor/doctor_page.dart';
+import 'package:clinic_users/features/doctor/view/doctor_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ionicons/ionicons.dart';
@@ -95,7 +96,19 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-            ElevatedButton(onPressed: () {}, child: const Text("Go to Queue"))
+            ElevatedButton(onPressed: () {}, child: const Text("Go to Queue")),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => QueuePage(
+                        userId: 'currentUserId'), // Replace with actual user ID
+                  ),
+                );
+              },
+              child: Text('View My Queues'),
+            ),
           ],
         ),
       ),

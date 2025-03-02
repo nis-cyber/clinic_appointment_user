@@ -71,15 +71,16 @@ class AppointmentPendingPage extends StatelessWidget {
                                 DateTime.parse(appointmentData['date']))),
                         _buildInfoRow(
                             'Time Slot', appointmentData['time_slot']),
-                        _buildInfoRow('Document', appointmentData['document']),
                         _buildInfoRow('Status', appointmentData['status']),
                         const SizedBox(height: 8),
                         ElevatedButton(
                           onPressed: () {
-                            _cancelAppointment(
+                            handleAppointmentCancellation(
                               context,
                               appointmentDoc.id,
                               appointmentData['doctor_id'],
+                              appointmentData['doctor_name'],
+                              appointmentData['doctor_specialty'],
                               appointmentData['date'],
                               appointmentData['time_slot'],
                             );
@@ -116,6 +117,108 @@ class AppointmentPendingPage extends StatelessWidget {
     );
   }
 
+  /// Function to handle appointment cancellation and assign to next user in queue
+  Future<void> handleAppointmentCancellation(
+    BuildContext context,
+    String appointmentId,
+    String doctorId,
+    String doctorName,
+    String doctorSpecialty,
+    String date,
+    String timeSlot,
+  ) async {
+    try {
+      // First, cancel the appointment as normal
+      await _cancelAppointment(
+        context,
+        appointmentId,
+        doctorId,
+        date,
+        timeSlot,
+      );
+
+      // Check if there are users in the queue for this specific slot
+      QuerySnapshot queueSnapshot = await FirebaseFirestore.instance
+          .collection('queues')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('date', isEqualTo: date)
+          .where('timeSlot', isEqualTo: timeSlot)
+          .orderBy(
+              'timestamp') // Order by timestamp to get the first person who joined
+          .limit(1) // Get only the first person in the queue
+          .get();
+
+      // If there's at least one person in the queue
+      if (queueSnapshot.docs.isNotEmpty) {
+        // Get the first person's queue entry
+        var queueDoc = queueSnapshot.docs.first;
+        var queueData = queueDoc.data() as Map<String, dynamic>;
+        String nextUserId = queueData['userId'];
+
+        // Get user information for the new appointment
+        DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(nextUserId)
+            .get();
+
+        Map<String, dynamic> userData = {};
+        if (userSnapshot.exists) {
+          userData = userSnapshot.data() as Map<String, dynamic>;
+        }
+
+        // Create the appointment data
+        Map<String, dynamic> newAppointmentData = {
+          'doctor_id': doctorId,
+          'doctor_name': doctorName,
+          'doctor_specialty': doctorSpecialty,
+          'user_id': nextUserId,
+          'user_name': userData['name'] ?? 'Unknown User',
+          'user_phone': userData['phone'] ?? 'No Phone',
+          'date': date,
+          'time_slot': timeSlot,
+          'status': 'confirmed',
+          'created_at': DateTime.now().toIso8601String(),
+        };
+
+        // Add the new appointment
+        await FirebaseFirestore.instance
+            .collection('appointment_pending')
+            .add(newAppointmentData);
+
+        // Remove the user from the queue
+        await FirebaseFirestore.instance
+            .collection('queues')
+            .doc(queueDoc.id)
+            .delete();
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Appointment cancelled and assigned to next person in queue'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        // No one in queue, just show normal cancellation message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Appointment cancelled successfully'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   Future<void> _cancelAppointment(
     BuildContext context,
     String appointmentId,
@@ -139,36 +242,30 @@ class AppointmentPendingPage extends StatelessWidget {
       if (doctorSnapshot.exists) {
         var doctorData = doctorSnapshot.data() as Map<String, dynamic>;
 
-        // Restore the time slot to the doctor's availability
-        if (doctorData['availableSlots'] != null) {
-          List<dynamic> slots = doctorData['availableSlots'][date] ?? [];
+        // The booking function uses 'availability', but cancellation uses 'availableSlots'
+        // Fixing to use 'availability' consistently
+        if (doctorData['availability'] != null &&
+            doctorData['availability'][date] != null) {
+          List<dynamic> slots = doctorData['availability'][date];
 
-          if (!slots.contains(timeSlot)) {
-            slots.add(
-                timeSlot); // Add the canceled time slot back to availability
-
-            // Update the doctor's document with the restored time slot
-            await FirebaseFirestore.instance
-                .collection('doctors')
-                .doc(doctorId)
-                .update({
-              'availableSlots.$date': slots,
-            });
+          // Find the booked slot and restore it to original format
+          for (int i = 0; i < slots.length; i++) {
+            if (slots[i] == "$timeSlot (Booked)") {
+              slots[i] = timeSlot; // Remove the "(Booked)" marker
+              break;
+            }
           }
+
+          // Update the doctor's availability with the modified slots
+          await FirebaseFirestore.instance
+              .collection('doctors')
+              .doc(doctorId)
+              .update({'availability': doctorData['availability']});
         }
       }
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Appointment canceled successfully!'),
-            backgroundColor: Colors.green),
-      );
     } catch (e) {
-      // Handle any errors during the cancellation
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      // We'll handle errors in the calling function
+      rethrow;
     }
   }
 }
