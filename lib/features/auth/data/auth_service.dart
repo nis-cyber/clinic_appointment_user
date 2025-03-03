@@ -20,8 +20,8 @@ class AuthService {
     }
   }
 
-  Future<void> register(
-      String email, String password, String fullname, String address) async {
+  Future<void> register(String email, String password, String fullname,
+      String address, String phone) async {
     try {
       UserCredential userCredential =
           await _auth.createUserWithEmailAndPassword(
@@ -34,6 +34,7 @@ class AuthService {
         'email': email.trim(),
         'fullname': fullname.trim(),
         'address': address.trim(),
+        'phone': phone.trim(), // Added phone number
         'token': token,
       });
     } catch (e) {

@@ -1,5 +1,5 @@
 import 'package:clinic_users/api/firebase_options.dart';
-import 'package:clinic_users/widgets/bottom_nav_bar.dart';
+import 'package:clinic_users/features/queue/widgets/bottom_nav_bar.dart';
 import 'package:clinic_users/features/appointment/pages/tabs/appointment_page.dart';
 import 'package:clinic_users/features/auth/pages/status_page.dart';
 import 'package:clinic_users/features/dashboard/home_page.dart';

@@ -235,10 +235,10 @@ class DoctorDetailPage extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.access_time, color: Colors.blue),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 "Join the Queue",
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -249,29 +249,32 @@ class DoctorDetailPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 "Do you want to join the queue for",
                 style: TextStyle(fontSize: 16),
               ),
-              SizedBox(height: 5),
+              const SizedBox(height: 5),
               Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 18, color: Colors.blue),
-                  SizedBox(width: 6),
+                  const Icon(Icons.calendar_today,
+                      size: 18, color: Colors.blue),
+                  const SizedBox(width: 6),
                   Text(
                     date,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ],
               ),
-              SizedBox(height: 5),
+              const SizedBox(height: 5),
               Row(
                 children: [
-                  Icon(Icons.access_time, size: 18, color: Colors.blue),
-                  SizedBox(width: 6),
+                  const Icon(Icons.access_time, size: 18, color: Colors.blue),
+                  const SizedBox(width: 6),
                   Text(
                     timeSlot,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ],
               ),
@@ -280,7 +283,7 @@ class DoctorDetailPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text("Cancel", style: TextStyle(color: Colors.red)),
+              child: const Text("Cancel", style: TextStyle(color: Colors.red)),
             ),
             ElevatedButton.icon(
               onPressed: () {
@@ -294,8 +297,8 @@ class DoctorDetailPage extends StatelessWidget {
                 );
                 Navigator.of(context).pop();
               },
-              icon: Icon(Icons.check_circle),
-              label: Text("Join Queue"),
+              icon: const Icon(Icons.check_circle),
+              label: const Text("Join Queue"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
@@ -368,12 +371,13 @@ class DoctorDetailPage extends StatelessWidget {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Already in Queue'),
-          content: Text('You are already in the queue for this time slot.'),
+          title: const Text('Already in Queue'),
+          content:
+              const Text('You are already in the queue for this time slot.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
+              child: const Text('OK'),
             ),
           ],
         ),
@@ -381,7 +385,18 @@ class DoctorDetailPage extends StatelessWidget {
       return;
     }
 
-    // Add the user to the queue
+    // Fetch the user details from the 'user' collection
+    DocumentSnapshot userSnapshot =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+    if (!userSnapshot.exists) {
+      print('User details not found.');
+      return;
+    }
+
+    var userData = userSnapshot.data() as Map<String, dynamic>;
+
+    // Add the user to the queue with user details
     FirebaseFirestore.instance.collection('queues').add({
       'doctorId': doctorId,
       'doctorName': doctorName,
@@ -389,6 +404,12 @@ class DoctorDetailPage extends StatelessWidget {
       'date': date,
       'timeSlot': timeSlot,
       'userId': userId,
+      'name': userData['fullname'],
+      'email': userData['email'],
+      'address': userData['address'],
+      'phone': userData['phone'],
+      // Add any other user details you need
+
       'timestamp': DateTime.now(),
     }).then((value) {
       print('Joined the queue successfully');
@@ -396,12 +417,12 @@ class DoctorDetailPage extends StatelessWidget {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Queue Joined'),
-          content: Text('You have successfully joined the queue.'),
+          title: const Text('Queue Joined'),
+          content: const Text('You have successfully joined the queue.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
+              child: const Text('OK'),
             ),
           ],
         ),
@@ -412,12 +433,12 @@ class DoctorDetailPage extends StatelessWidget {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Error'),
-          content: Text('Failed to join the queue. Please try again.'),
+          title: const Text('Error'),
+          content: const Text('Failed to join the queue. Please try again.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
+              child: const Text('OK'),
             ),
           ],
         ),

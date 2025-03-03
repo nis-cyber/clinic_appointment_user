@@ -23,12 +23,12 @@ class _ProfilePageState extends State<ProfilePage> {
   String fullname = '';
   String address = '';
   String profileImageUrl = '';
-  String number = '';
+  String phone = '';
   bool isEditing = false;
   bool isLoading = false;
   TextEditingController fullnameController = TextEditingController();
   TextEditingController addressController = TextEditingController();
-  TextEditingController numberController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
 
   @override
   void initState() {
@@ -44,26 +44,29 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       User? user = _auth.currentUser;
       if (user != null) {
+        // Fetch data from the 'users' collection
         DocumentSnapshot userDoc =
             await _firestore.collection('users').doc(user.uid).get();
         if (userDoc.exists) {
+          Map<String, dynamic> userData =
+              userDoc.data() as Map<String, dynamic>;
           setState(() {
-            email = userDoc['email'] ?? '';
-            fullname = userDoc['fullname'] ?? '';
-            address = userDoc['address'] ?? '';
-            number = userDoc['number'] ?? '';
-            profileImageUrl = userDoc['profileImageUrl'] ?? '';
+            email = userData['email'] ?? '';
+            fullname = userData['fullname'] ?? '';
+            address = userData['address'] ?? '';
+            phone = userData['phone'] ?? '';
+            profileImageUrl = userData['profileImageUrl'] ?? '';
             fullnameController.text = fullname;
             addressController.text = address;
-            numberController.text = number; // Set the initial value for number
+            phoneController.text = phone;
           });
         } else {
-          // Create a new document if it doesn't exist
+          // Create a new document in the 'users' collection if it doesn't exist
           await _firestore.collection('users').doc(user.uid).set({
             'email': user.email ?? '',
             'fullname': '',
             'address': '',
-            'number': '',
+            'phone': '',
             'profileImageUrl': '',
           });
           setState(() {
@@ -74,7 +77,7 @@ class _ProfilePageState extends State<ProfilePage> {
         throw Exception('No authenticated user found');
       }
     } catch (e) {
-      rethrow;
+      _showErrorSnackBar('Failed to load profile: $e');
     } finally {
       setState(() {
         isLoading = false;
@@ -90,17 +93,21 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       User? user = _auth.currentUser;
       if (user != null) {
+        // Update the 'users' collection with the edited data
         await _firestore.collection('users').doc(user.uid).update({
           'fullname': fullnameController.text,
           'address': addressController.text,
-          'number': numberController.text,
+          'phone': phoneController.text,
         });
+
+        // Update the local state
         setState(() {
           fullname = fullnameController.text;
           address = addressController.text;
-          number = numberController.text;
+          phone = phoneController.text;
           isEditing = false;
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully')),
         );
@@ -117,8 +124,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    final ImagePicker _picker = ImagePicker();
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
       setState(() {
@@ -140,7 +147,7 @@ class _ProfilePageState extends State<ProfilePage> {
           // Get the download URL
           String downloadURL = await storageRef.getDownloadURL();
 
-          // Update Firestore with the new profile image URL
+          // Update the 'users' collection with the new profile image URL
           await _firestore.collection('users').doc(user.uid).update({
             'profileImageUrl': downloadURL,
           });
@@ -184,8 +191,8 @@ class _ProfilePageState extends State<ProfilePage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color.fromARGB(255, 173, 205, 204)!,
-              const Color.fromARGB(255, 180, 152, 225)!
+              const Color.fromARGB(255, 173, 205, 204),
+              const Color.fromARGB(255, 180, 152, 225)
             ],
           ),
         ),
@@ -239,13 +246,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ],
                   ),
-                  // Updated UI Section
                   SliverToBoxAdapter(
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
                         Text(fullname,
-                                style: TextStyle(
+                                style: const TextStyle(
                                     fontSize: 30, fontWeight: FontWeight.bold))
                             .animate()
                             .fadeIn(duration: 500.ms),
@@ -303,7 +309,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     icon: Icons.contact_phone,
                                     label: 'Phone Number',
                                     controller:
-                                        numberController, // Use controller
+                                        phoneController, // Use controller
                                     isEditable: isEditing,
                                   ),
                                 ],

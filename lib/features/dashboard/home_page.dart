@@ -1,6 +1,6 @@
 import 'package:clinic_users/features/queue/queue_page.dart';
-import 'package:clinic_users/widgets/health_needs.dart';
-import 'package:clinic_users/widgets/upcoming_card.dart';
+import 'package:clinic_users/features/queue/widgets/health_needs.dart';
+import 'package:clinic_users/features/queue/widgets/upcoming_card.dart';
 import 'package:clinic_users/features/doctor/view/doctor_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -96,7 +96,6 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-            ElevatedButton(onPressed: () {}, child: const Text("Go to Queue")),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
