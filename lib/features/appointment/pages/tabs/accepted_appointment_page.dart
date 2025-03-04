@@ -69,6 +69,13 @@ class MyAcceptedAppointmentsPage extends StatelessWidget {
                         _buildInfoRow(
                             'Time Slot', appointmentData['time_slot']),
                         _buildInfoRow('Status', appointmentData['status']),
+                        _buildInfoRow(
+                            'Created At',
+                            appointmentData['created_at'] != null
+                                ? DateFormat('yyyy-MM-dd HH:mm').format(
+                                    DateTime.parse(
+                                        appointmentData['created_at']))
+                                : 'Unknown'),
                       ],
                     ),
                   ),

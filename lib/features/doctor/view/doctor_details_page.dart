@@ -1,5 +1,6 @@
 import 'package:clinic_users/features/doctor/model/doctor_model.dart';
 import 'package:clinic_users/features/doctor/view/appointment_booking_sheet.dart';
+import 'package:clinic_users/features/doctor/view/doctor_feedback_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -19,6 +20,18 @@ class DoctorDetailPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Doctor Details'),
         backgroundColor: const Color.fromARGB(255, 173, 205, 204),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.star),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => DoctorFeedbackPage(doctorId: doctorId),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -60,8 +73,10 @@ class DoctorDetailPage extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildAvailabilitySection(
                       doctor.availability, doctor, context),
-                  _buildRatingAndFeedbackSection(doctorId),
-                  const SizedBox(height: 495),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                      onPressed: () {},
+                      child: Text('Doctor Feedback and Rating')),
                 ],
               ),
             );
@@ -444,120 +459,6 @@ class DoctorDetailPage extends StatelessWidget {
         ),
       );
     });
-  }
-
-  Widget _buildRatingAndFeedbackSection(String doctorId) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestoreService.getDoctorFeedback(doctorId),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Text('Error: ${snapshot.error}');
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        }
-
-        var feedbacks = snapshot.data?.docs ?? [];
-        double averageRating = 0;
-        if (feedbacks.isNotEmpty) {
-          averageRating = feedbacks
-                  .map((doc) => doc['rating'] as num)
-                  .reduce((a, b) => a + b) /
-              feedbacks.length;
-        }
-
-        return Card(
-          elevation: 4,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Ratings & Feedback',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal[700],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Text(
-                      averageRating.toStringAsFixed(1),
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal[700],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    RatingBarIndicator(
-                      rating: averageRating,
-                      itemBuilder: (context, index) => const Icon(
-                        Icons.star,
-                        color: Colors.amber,
-                      ),
-                      itemCount: 5,
-                      itemSize: 20.0,
-                      direction: Axis.horizontal,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '(${feedbacks.length} reviews)',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ...feedbacks.map((feedback) => _buildFeedbackItem(feedback)),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFeedbackItem(QueryDocumentSnapshot feedback) {
-    var data = feedback.data() as Map<String, dynamic>;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              RatingBarIndicator(
-                rating: data['rating'].toDouble(),
-                itemBuilder: (context, index) => const Icon(
-                  Icons.star,
-                  color: Colors.amber,
-                ),
-                itemCount: 5,
-                itemSize: 16.0,
-                direction: Axis.horizontal,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                DateFormat('MMM d, yyyy').format(data['timestamp'].toDate()),
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            data['feedback'],
-            style: const TextStyle(fontSize: 14),
-          ),
-          const Divider(),
-        ],
-      ),
-    );
   }
 
   void _bookAppointment(

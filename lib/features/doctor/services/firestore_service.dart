@@ -24,8 +24,11 @@ class FirestoreService {
   }
 
   Future<void> bookAppointment(Appointment appointment) async {
-    // Add the appointment to the 'appointment_pending' collection
-    await _firestore.collection('appointment_pending').add(appointment.toMap());
+    // Add the appointment to the 'appointment_pending' collection with a timestamp
+    await _firestore.collection('appointment_pending').add({
+      ...appointment.toMap(),
+      'timestamp': FieldValue.serverTimestamp(), // Add timestamp
+    });
 
     // Update doctor's availability
     DocumentSnapshot doctorSnapshot =

@@ -79,6 +79,10 @@ class MyAcceptedAppointmentsFromQueuePage extends StatelessWidget {
                                 DateTime.parse(appointmentData['date']))),
                         _buildInfoRow('Time Slot', appointmentData['timeSlot']),
                         _buildInfoRow('Status', appointmentData['status']),
+                        _buildInfoRow(
+                            'Accepted Time',
+                            DateFormat('yyyy-MM-dd HH:mm')
+                                .format(appointmentData['timestamp'].toDate())),
                       ],
                     ),
                   ),

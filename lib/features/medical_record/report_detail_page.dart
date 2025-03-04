@@ -48,8 +48,8 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
       if (_hasSubmittedFeedback) {
         var data = feedbackDoc.docs.first.data();
         setState(() {
-          _rating = data['rating'];
-          _feedbackController.text = data['feedback'];
+          _rating = data['rating'] ?? 0;
+          _feedbackController.text = data['feedback'] ?? '';
         });
       }
     } catch (e) {
@@ -57,6 +57,108 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _submitFeedback() async {
+    if (_rating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please provide a rating')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await Firebase.initializeApp();
+      FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+      // Prepare feedback data
+      Map<String, dynamic> feedbackData = {
+        'report_id': widget.reportData['report_id'],
+        'doctor_id': widget.reportData['doctor_id'],
+        'doctor_name': widget.reportData['doctor_name'],
+        'patient_id': widget.reportData['patient_id'],
+        'rating': _rating,
+        'feedback': _feedbackController.text,
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      // Check if feedback already exists
+      var existingFeedback = await firestore
+          .collection('doctor_feedback')
+          .where('report_id', isEqualTo: widget.reportData['report_id'])
+          .get();
+
+      if (existingFeedback.docs.isNotEmpty) {
+        // Update existing feedback
+        await firestore
+            .collection('doctor_feedback')
+            .doc(existingFeedback.docs.first.id)
+            .update(feedbackData);
+      } else {
+        // Add new feedback
+        await firestore.collection('doctor_feedback').add(feedbackData);
+      }
+
+      // Also update the doctor's average rating
+      await _updateDoctorAverageRating(widget.reportData['doctor_id']);
+
+      setState(() {
+        _hasSubmittedFeedback = true;
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thank you for your feedback!')),
+      );
+    } catch (e) {
+      print('Error submitting feedback: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error submitting feedback: $e')),
+      );
+    }
+  }
+
+  Future<void> _updateDoctorAverageRating(String doctorId) async {
+    try {
+      FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+      // Get all feedback for this doctor
+      var allFeedbacks = await firestore
+          .collection('doctor_feedback')
+          .where('doctor_id', isEqualTo: doctorId)
+          .get();
+
+      if (allFeedbacks.docs.isEmpty) return;
+
+      // Calculate average rating
+      double totalRating = 0;
+      int count = 0;
+
+      for (var doc in allFeedbacks.docs) {
+        var data = doc.data();
+        if (data['rating'] != null) {
+          totalRating += data['rating'];
+          count++;
+        }
+      }
+
+      double averageRating = count > 0 ? totalRating / count : 0;
+
+      // Update doctor's average rating in doctors collection
+      await firestore.collection('doctors').doc(doctorId).update({
+        'average_rating': averageRating,
+        'feedback_count': count,
+      });
+    } catch (e) {
+      print('Error updating doctor average rating: $e');
     }
   }
 
@@ -83,6 +185,11 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
               pw.Text(
                   'Date: ${DateFormat('MMMM d, yyyy').format(DateTime.parse(widget.reportData['date']))}'),
               pw.Text('Time Slot: ${widget.reportData['time_slot']}'),
+              if (_hasSubmittedFeedback) ...[
+                pw.SizedBox(height: 20),
+                pw.Text('Rating: $_rating / 5'),
+                pw.Text('Feedback: ${_feedbackController.text}'),
+              ],
             ],
           );
         },
@@ -169,27 +276,29 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
         backgroundColor: const Color.fromARGB(255, 173, 205, 204),
         elevation: 0,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromARGB(255, 173, 205, 204),
-              Color.fromARGB(255, 180, 152, 225)
-            ],
-          ),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildDoctorCard(),
-              _buildReportCard(context),
-              _buildRatingAndFeedbackCard(),
-            ],
-          ),
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color.fromARGB(255, 173, 205, 204),
+                    Color.fromARGB(255, 180, 152, 225)
+                  ],
+                ),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildDoctorCard(),
+                    _buildReportCard(context),
+                    _buildFeedbackCard(),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
@@ -204,8 +313,8 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color.fromARGB(255, 177, 238, 231)!,
-              const Color.fromARGB(255, 50, 76, 74)!
+              const Color.fromARGB(255, 177, 238, 231),
+              const Color.fromARGB(255, 50, 76, 74)
             ],
           ),
           borderRadius: BorderRadius.circular(15),
@@ -288,6 +397,51 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
             ),
             _buildDetailRow(
                 Icons.access_time, 'Time Slot', widget.reportData['time_slot']),
+            if (_hasSubmittedFeedback) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Your Feedback',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal[700]),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  RatingBarIndicator(
+                    rating: _rating,
+                    itemBuilder: (context, index) => const Icon(
+                      Icons.star,
+                      color: Colors.amber,
+                    ),
+                    itemCount: 5,
+                    itemSize: 24.0,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$_rating/5',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_feedbackController.text.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _feedbackController.text,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+            ],
             if (widget.reportData['image_url'] != null) ...[
               const SizedBox(height: 16),
               const Text(
@@ -316,6 +470,91 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                 ),
               ),
             ]
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeedbackCard() {
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _hasSubmittedFeedback
+                  ? 'Edit Your Feedback'
+                  : 'Rate Your Experience',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.teal[700],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Rate your doctor and the consultation:',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: RatingBar.builder(
+                initialRating: _rating,
+                minRating: 1,
+                direction: Axis.horizontal,
+                allowHalfRating: true,
+                itemCount: 5,
+                itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
+                itemBuilder: (context, _) => const Icon(
+                  Icons.star,
+                  color: Colors.amber,
+                ),
+                onRatingUpdate: (rating) {
+                  setState(() {
+                    _rating = rating;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _feedbackController,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: 'Additional Feedback (Optional)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                filled: true,
+                fillColor: Colors.grey[100],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _submitFeedback,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal[700],
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  _hasSubmittedFeedback ? 'Update Feedback' : 'Submit Feedback',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -353,129 +592,6 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
         ],
       ),
     );
-  }
-
-  Widget _buildRatingAndFeedbackCard() {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Your Rating',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal[700],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Center(
-              child: RatingBar.builder(
-                initialRating: _rating,
-                minRating: 1,
-                direction: Axis.horizontal,
-                allowHalfRating: true,
-                itemCount: 5,
-                itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
-                itemBuilder: (context, _) => const Icon(
-                  Icons.star,
-                  color: Colors.amber,
-                ),
-                onRatingUpdate: (rating) {
-                  if (!_hasSubmittedFeedback) {
-                    setState(() {
-                      _rating = rating;
-                    });
-                  }
-                },
-                ignoreGestures: _hasSubmittedFeedback,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Your Feedback',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal[700],
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _feedbackController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Enter your feedback here',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              readOnly: _hasSubmittedFeedback,
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: _hasSubmittedFeedback
-                  ? Text(
-                      'Thank you for your feedback!',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal[700],
-                      ),
-                    )
-                  : ElevatedButton(
-                      onPressed: _submitRatingAndFeedback,
-                      child: const Text('Submit'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal[700],
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 30, vertical: 15),
-                        textStyle: const TextStyle(fontSize: 18),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _submitRatingAndFeedback() async {
-    if (_rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide a rating')),
-      );
-      return;
-    }
-
-    try {
-      FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-      await firestore.collection('doctor_feedback').add({
-        'doctor_id': widget.reportData['doctor_id'],
-        'report_id': widget.reportData['report_id'],
-        'rating': _rating,
-        'feedback': _feedbackController.text,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      setState(() {
-        _hasSubmittedFeedback = true;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thank you for your feedback!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error submitting feedback: $e')),
-      );
-    }
   }
 }
 

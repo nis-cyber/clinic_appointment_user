@@ -101,8 +101,7 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => QueuePage(
-                        userId: 'currentUserId'), // Replace with actual user ID
+                    builder: (context) => QueuePage(),
                   ),
                 );
               },

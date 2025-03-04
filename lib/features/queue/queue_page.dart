@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class QueuePage extends StatelessWidget {
-  final String userId;
+  const QueuePage({super.key});
 
-  const QueuePage({super.key, required this.userId});
+  Future<String?> _getCurrentUserId() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    return user?.uid;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,45 +28,96 @@ class QueuePage extends StatelessWidget {
             ],
           ),
         ),
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('queues')
-              .where('userId', isEqualTo: userId)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            }
-
-            if (snapshot.connectionState == ConnectionState.waiting) {
+        child: FutureBuilder<String?>(
+          future: _getCurrentUserId(),
+          builder: (context, userSnapshot) {
+            if (userSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (snapshot.data!.docs.isEmpty) {
+            if (userSnapshot.hasError || userSnapshot.data == null) {
               return const Center(
                 child: Text(
-                  'You have not joined any queues.',
+                  'Error fetching user data. Please log in again.',
                   style: TextStyle(fontSize: 18, color: Colors.white),
                 ),
               );
             }
 
-            var queues = snapshot.data!.docs;
+            String userId = userSnapshot.data!;
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: queues.length,
-              itemBuilder: (context, index) {
-                var queue = queues[index];
-                var data = queue.data() as Map<String, dynamic>;
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('queues')
+                  .where('userId', isEqualTo: userId)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-                return _buildQueueCard(data);
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'You have not joined any queues.',
+                      style: TextStyle(fontSize: 18, color: Colors.white),
+                    ),
+                  );
+                }
+
+                var queues = snapshot.data!.docs;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: queues.length,
+                  itemBuilder: (context, index) {
+                    var queue = queues[index];
+                    var data = queue.data() as Map<String, dynamic>;
+
+                    return FutureBuilder<int?>(
+                      future: _getQueuePosition(data['doctorId'], data['date'],
+                          data['timeSlot'], userId),
+                      builder: (context, positionSnapshot) {
+                        if (positionSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+
+                        data['position'] = positionSnapshot.data ?? 'N/A';
+                        return _buildQueueCard(data);
+                      },
+                    );
+                  },
+                );
               },
             );
           },
         ),
       ),
     );
+  }
+
+  Future<int?> _getQueuePosition(
+      String doctorId, String date, String timeSlot, String userId) async {
+    var querySnapshot = await FirebaseFirestore.instance
+        .collection('queues')
+        .where('doctorId', isEqualTo: doctorId)
+        .where('date', isEqualTo: date)
+        .where('timeSlot', isEqualTo: timeSlot)
+        .orderBy('createdAt')
+        .get();
+
+    for (int i = 0; i < querySnapshot.docs.length; i++) {
+      if (querySnapshot.docs[i]['userId'] == userId) {
+        return i + 1;
+      }
+    }
+    return null;
   }
 
   Widget _buildQueueCard(Map<String, dynamic> data) {
@@ -78,7 +133,7 @@ class QueuePage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              data['doctorName'],
+              data['doctorName'] ?? 'Unknown Doctor',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -87,7 +142,7 @@ class QueuePage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Specialty: ${data['doctorSpecialty']}',
+              'Specialty: ${data['doctorSpecialty'] ?? 'N/A'}',
               style: const TextStyle(fontSize: 16, color: Colors.black87),
             ),
             const SizedBox(height: 8),
@@ -96,7 +151,7 @@ class QueuePage extends StatelessWidget {
                 const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
                 const SizedBox(width: 8),
                 Text(
-                  data['date'],
+                  data['date'] ?? 'N/A',
                   style: const TextStyle(fontSize: 16, color: Colors.black87),
                 ),
               ],
@@ -107,22 +162,12 @@ class QueuePage extends StatelessWidget {
                 const Icon(Icons.access_time, size: 16, color: Colors.blue),
                 const SizedBox(width: 8),
                 Text(
-                  data['timeSlot'],
+                  data['timeSlot'] ?? 'N/A',
                   style: const TextStyle(fontSize: 16, color: Colors.black87),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.person, size: 16, color: Colors.blue),
-                const SizedBox(width: 8),
-                Text(
-                  'Your Position: ${data['position'] ?? 'N/A'}',
-                  style: const TextStyle(fontSize: 16, color: Colors.black87),
-                ),
-              ],
-            ),
           ],
         ),
       ),

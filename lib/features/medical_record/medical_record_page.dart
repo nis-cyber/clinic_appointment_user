@@ -81,6 +81,12 @@ class MedicalReportPage extends StatelessWidget {
                               'Medications', reportData['medications']),
                           _buildInfoRow('Speciality', reportData['speciality']),
                           _buildInfoRow(
+                            'Received Time',
+                            reportData['timestamp'] != null
+                                ? "Created: ${DateFormat('HH:mm').format((reportData['timestamp'] as Timestamp).toDate())}"
+                                : 'Time unknown',
+                          ),
+                          _buildInfoRow(
                               'Date',
                               DateFormat('yyyy-MM-dd')
                                   .format(DateTime.parse(reportData['date']))),

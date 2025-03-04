@@ -136,11 +136,17 @@ class _DoctorPageState extends State<DoctorPage> {
                   // Apply filters
                   doctors = doctors.where((doc) {
                     var data = doc.data() as Map<String, dynamic>;
+
+                    // Debugging: Print the specialty of each doctor
+                    print(
+                        'Doctor: ${data['name']}, Specialty: ${data['specialty']}');
+
                     bool nameMatch = data['name']
                         .toLowerCase()
                         .contains(_searchText.toLowerCase());
                     bool specialtyMatch = _selectedSpecialty == 'All' ||
                         data['specialty'] == _selectedSpecialty;
+
                     return nameMatch && specialtyMatch;
                   }).toList();
 
